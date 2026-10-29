@@ -10,6 +10,20 @@ bloqueado por meio de três camadas:
    descartados antes de chegarem ao WebView;
 3. **GestureDetector**: o duplo toque é consumido e não produz zoom.
 
+## Ícone oficial e desempenho (v1.1)
+
+- **Ícone oficial do DuckDuckGo**: o logotipo vetorial original (pato branco,
+  bico amarelo `#FDD209`, gravata verde `#65BC46` e olhos azuis `#2D4F8E`
+  sobre o disco laranja `#DE5833`) foi convertido em *adaptive icon*,
+  permanecendo nítido em qualquer densidade de tela;
+- **Sem tela de carregamento**: o indicador circular de progresso foi removido
+  por completo; o aplicativo abre diretamente no WebView e o fundo escuro do
+  tema (`#161616`) coincide com o tema do Duck.ai, eliminando qualquer
+  piscada ou rotacao de espera;
+- **Abertura rápida**: o modo de cache `LOAD_CACHE_ELSE_NETWORK` prioriza o
+  conteúdo já armazenado, tornando as aberturas seguintes praticamente
+  instantâneas.
+
 ## Como obter o APK (sem instalar nada)
 
 1. Acesse a aba **Actions** deste repositório;

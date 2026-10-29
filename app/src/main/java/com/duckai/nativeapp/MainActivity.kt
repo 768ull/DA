@@ -8,9 +8,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.GestureDetector
-import android.view.Gravity
 import android.view.MotionEvent
-import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -23,7 +21,6 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,7 +36,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var webView: WebView
-    private lateinit var progressBar: ProgressBar
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     /** Seletor de arquivos para uploads (anexos de imagem no chat). */
@@ -65,18 +61,11 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        progressBar = ProgressBar(this).apply {
-            isIndeterminate = true
-            visibility = View.GONE
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER
-            )
-        }
-
+        /* SEM TELA DE CARREGAMENTO: o WebView ocupa a tela inteira desde
+         * o primeiro quadro. O fundo escuro do tema coincide com o fundo
+         * do Duck.ai, portanto nao existe rotacao de progresso nem
+         * piscada branca durante a abertura. */
         root.addView(webView)
-        root.addView(progressBar)
         setContentView(root)
 
         configureWebView()
@@ -122,7 +111,12 @@ class MainActivity : AppCompatActivity() {
             // Apenas HTTPS; conteudo misto e bloqueado.
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             mediaPlaybackRequiresUserGesture = false
-            cacheMode = WebSettings.LOAD_DEFAULT
+
+            /* ---- ABERTURA QUASE INSTANTANEA ----
+             * O cache tem prioridade sobre a rede: apos o primeiro
+             * uso, o Duck.ai e desenhado imediatamente a partir do
+             * cache, sem aguardar novas respostas de rede. */
+            cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
         }
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -185,10 +179,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        override fun onPageFinished(view: WebView, url: String) {
-            progressBar.visibility = View.GONE
-        }
-
         override fun onReceivedError(
             view: WebView,
             request: WebResourceRequest,
@@ -211,11 +201,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private inner class DuckChromeClient : WebChromeClient() {
-
-        override fun onProgressChanged(view: WebView, newProgress: Int) {
-            progressBar.visibility =
-                if (newProgress in 1..99) View.VISIBLE else View.GONE
-        }
 
         override fun onShowFileChooser(
             webView: WebView,
