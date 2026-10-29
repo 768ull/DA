@@ -1,5 +1,6 @@
 package org.duckassist.app.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
@@ -27,19 +29,19 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,9 +60,10 @@ import org.duckassist.app.data.DuckModel
 import org.duckassist.app.data.MessageEntity
 
 /**
- * Tela principal de conversa. Interface totalmente nativa (Jetpack
- * Compose): não há WebView nem qualquer mecanismo de zoom; o layout é
- * estático e renderizado pelo próprio sistema.
+ * Tela principal de conversa, no estilo visual do duck.ai: tela escura
+ * (#161616), acento azul, respostas como texto simples e mensagens do
+ * usuário em pílulas arredondadas. Interface 100% nativa em Compose:
+ * sem WebView, sem zoom, layout estático.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,10 +102,15 @@ fun ChatScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("DuckAssist", fontWeight = FontWeight.Bold) },
+                title = { Text("duck.ai", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                ),
                 actions = {
                     IconButton(onClick = { vm.newChat() }) {
                         Icon(Icons.Filled.Add, contentDescription = "Nova conversa")
@@ -123,9 +132,13 @@ fun ChatScreen(
         bottomBar = {
             Column {
                 if (running) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 }
-                Surface(tonalElevation = 6.dp) {
+                Surface(color = MaterialTheme.colorScheme.background) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -138,9 +151,16 @@ fun ChatScreen(
                             value = input,
                             onValueChange = { input = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = { Text("Pergunte ao Duck…") },
+                            placeholder = { Text("Pergunte qualquer coisa…") },
                             maxLines = 6,
-                            shape = RoundedCornerShape(26.dp)
+                            shape = RoundedCornerShape(26.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            )
                         )
                         Spacer(Modifier.width(8.dp))
                         FilledIconButton(
@@ -167,15 +187,21 @@ fun ChatScreen(
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("🦆", fontSize = 56.sp)
                     Text(
-                        "Bem-vindo ao DuckAssist",
-                        style = MaterialTheme.typography.titleMedium
+                        "duck.ai",
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        "Converse anonimamente com os modelos do duck.ai",
+                        "Chat privado de IA. Gratuito.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Privado e anônimo. Não é necessária conta.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -187,51 +213,57 @@ fun ChatScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 items(messages, key = { it.id }) { message ->
-                    MessageBubble(message)
+                    MessageItem(message)
                 }
             }
         }
     }
 }
 
-/** Balha de mensagem nativa (sem zoom, sem escala, sem WebView). */
+/**
+ * Mensagem no estilo do duck.ai: a resposta do assistente é texto simples
+ * sobre a tela; a mensagem do usuário aparece em uma pílula arredondada.
+ */
 @Composable
-private fun MessageBubble(message: MessageEntity) {
+private fun MessageItem(message: MessageEntity) {
     val isUser = message.role == "user"
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
-    ) {
-        SelectionContainer {
-            Surface(
-                color = if (isUser) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (isUser) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.onSurface,
-                shape = RoundedCornerShape(
-                    topStart = 18.dp,
-                    topEnd = 18.dp,
-                    bottomEnd = if (isUser) 4.dp else 18.dp,
-                    bottomStart = if (isUser) 18.dp else 4.dp
-                ),
-                tonalElevation = 1.dp,
-                modifier = Modifier.widthIn(max = 320.dp)
-            ) {
-                Text(
-                    text = message.content,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.bodyLarge
-                )
+    if (isUser) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            SelectionContainer {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shape = RoundedCornerShape(22.dp),
+                    modifier = Modifier.widthIn(max = 320.dp)
+                ) {
+                    Text(
+                        text = message.content,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
+        }
+    } else {
+        SelectionContainer {
+            Text(
+                text = message.content,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
 
-/** Seletor de modelo exibido na barra superior. */
+/** Seletor de modelo no formato de pílula, como no duck.ai. */
 @Composable
 fun ModelPickerButton(
     models: List<DuckModel>,
@@ -241,8 +273,27 @@ fun ModelPickerButton(
     var expanded by remember { mutableStateOf(false) }
     val label = models.firstOrNull { it.id == selected }?.label ?: selected
     Box {
-        TextButton(onClick = { expanded = true }) {
-            Text(label, maxLines = 1)
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.clickable { expanded = true }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
+            ) {
+                Text(
+                    label,
+                    maxLines = 1,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = "Escolher modelo",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         DropdownMenu(
             expanded = expanded,
