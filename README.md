@@ -10,7 +10,7 @@ bloqueado por meio de três camadas:
    descartados antes de chegarem ao WebView;
 3. **GestureDetector**: o duplo toque é consumido e não produz zoom.
 
-## Ícone oficial e desempenho (v1.1)
+## Ícone oficial e desempenho (v1.1 / v1.2)
 
 - **Ícone oficial do DuckDuckGo**: o logotipo vetorial original (pato branco,
   bico amarelo `#FDD209`, gravata verde `#65BC46` e olhos azuis `#2D4F8E`
@@ -22,7 +22,12 @@ bloqueado por meio de três camadas:
   piscada ou rotacao de espera;
 - **Abertura rápida**: o modo de cache `LOAD_CACHE_ELSE_NETWORK` prioriza o
   conteúdo já armazenado, tornando as aberturas seguintes praticamente
-  instantâneas.
+  instantâneas;
+- **Estabilidade lateral absoluta (v1.2)**: o efeito elástico de *overscroll*
+  foi desativado e a página recebe `overflow-x: hidden` e
+  `overscroll-behavior-x: none` injetados ao término do carregamento. A
+  interface fica 100% estática: arrastar o dedo para a esquerda ou para a
+  direita não produz movimento, esticamento ou tremor algum.
 
 ## Como obter o APK (sem instalar nada)
 

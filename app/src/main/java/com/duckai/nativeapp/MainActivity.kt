@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -130,6 +131,17 @@ class MainActivity : AppCompatActivity() {
     /** Camadas 2 e 3 do bloqueio de zoom: multitoque e duplo toque. */
     private class NoZoomWebView(context: Context) : WebView(context) {
 
+        init {
+            /* ---- ESTABILIDADE LATERAL ABSOLUTA ----
+             * Camada fisica: desativa o efeito elastico de overscroll
+             * (o "esticamento" suave que acompanha o dedo ao arrastar
+             * para os lados) e esconde as barras de rolagem. O WebView
+             * fica rigido em movimentos horizontais. */
+            overScrollMode = View.OVER_SCROLL_NEVER
+            isHorizontalScrollBarEnabled = false
+            isVerticalScrollBarEnabled = false
+        }
+
         private val doubleTapBlocker = GestureDetector(
             context,
             object : GestureDetector.SimpleOnGestureListener() {
@@ -177,6 +189,21 @@ class MainActivity : AppCompatActivity() {
                 openExternally(url.toString())
                 true
             }
+        }
+
+        /* ---- ESTABILIDADE LATERAL ABSOLUTA (camada de conteudo) ----
+         * Trava qualquer rolagem horizontal residual do conteudo da
+         * pagina: mesmo que algum elemento saia 1 pixel da largura da
+         * tela, ele nao podera ser arrastado lateralmente. */
+        override fun onPageFinished(view: WebView, url: String) {
+            view.evaluateJavascript(
+                "try{" +
+                    "document.documentElement.style.overflowX='hidden';" +
+                    "document.body.style.overflowX='hidden';" +
+                    "document.body.style.overscrollBehaviorX='none';" +
+                    "}catch(e){}",
+                null
+            )
         }
 
         override fun onReceivedError(
