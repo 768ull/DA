@@ -128,19 +128,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Camadas 2 e 3 do bloqueio de zoom: multitoque e duplo toque. */
+    /** WebView totalmente rigido: sem zoom, sem overscroll e sem
+     *  qualquer deslocamento horizontal fisico. A pagina do Duck.ai
+     *  nao e modificada em nenhum byte. */
     private class NoZoomWebView(context: Context) : WebView(context) {
 
         init {
-            /* ---- ESTABILIDADE LATERAL ABSOLUTA ----
-             * Camada fisica: desativa o efeito elastico de overscroll
-             * (o "esticamento" suave que acompanha o dedo ao arrastar
-             * para os lados) e esconde as barras de rolagem. O WebView
-             * fica rigido em movimentos horizontais. */
+            /* Efeito elastico de overscroll (o "esticamento" suave que
+             * acompanha o dedo) totalmente desativado, assim como as
+             * barras de rolagem. */
             overScrollMode = View.OVER_SCROLL_NEVER
             isHorizontalScrollBarEnabled = false
             isVerticalScrollBarEnabled = false
         }
+
+        /* ---- TRAVA FISICA DA ROLAGEM HORIZONTAL ----
+         * Declarar que a area rolavel horizontal e exatamente igual a
+         * area visivel significa que NAO EXISTE espaco para rolar
+         * para os lados, independentemente do conteudo da pagina.
+         * E a correcao mais profunda e mais robusta possivel: atua no
+         * mecanismo de rolagem do proprio componente, sem tocar na
+         * pagina e sem interferir na rolagem vertical normal. */
+        override fun computeHorizontalScrollRange(): Int =
+            computeHorizontalScrollExtent()
 
         private val doubleTapBlocker = GestureDetector(
             context,
@@ -191,21 +201,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        /* ---- ESTABILIDADE LATERAL ABSOLUTA (camada de conteudo) ----
-         * Trava qualquer rolagem horizontal residual do conteudo da
-         * pagina: mesmo que algum elemento saia 1 pixel da largura da
-         * tela, ele nao podera ser arrastado lateralmente. */
-        override fun onPageFinished(view: WebView, url: String) {
-            view.evaluateJavascript(
-                "try{" +
-                    "document.documentElement.style.overflowX='hidden';" +
-                    "document.body.style.overflowX='hidden';" +
-                    "document.body.style.overscrollBehaviorX='none';" +
-                    "}catch(e){}",
-                null
-            )
-        }
-
         override fun onReceivedError(
             view: WebView,
             request: WebResourceRequest,
@@ -253,10 +248,7 @@ class MainActivity : AppCompatActivity() {
             callback.invoke(origin, false, false)
         }
 
-        /** Camera e microfone negados por padrao (app de privacidade).
-         *  Para habilitar entrada por voz do Duck.ai, solicite aqui a
-         *  permissao RECORD_AUDIO em tempo de execucao e chame
-         *  request.grant(request.resources). */
+        /** Camera e microfone negados por padrao (app de privacidade). */
         override fun onPermissionRequest(request: PermissionRequest) {
             request.deny()
         }
