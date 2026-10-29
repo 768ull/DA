@@ -1,2 +1,1 @@
-# Nenhuma regra adicional é necessária.
-# As classes android.webkit.* são fornecidas pelo sistema e não são ofuscadas.
+# Regras padrao. O app e pequeno e nao exige minimizacao.

@@ -1,72 +1,78 @@
-# Duck.ai — Aplicativo Nativo Android
+# Duck.ai Nativo — Interface 100% Nativa (Jetpack Compose)
 
-Aplicativo que encapsula https://duck.ai/ utilizando o WebView nativo do
-próprio Android (motor instalado no sistema), com zoom completamente
-bloqueado por meio de três camadas:
+Este ramo (`native-compose`) contém o segundo aplicativo da dupla:
 
-1. **WebSettings**: `setSupportZoom(false)`, `builtInZoomControls(false)` e
-   `displayZoomControls(false)` — desativa pinch, duplo toque e controles;
-2. **Interceptação de multitoque**: eventos com dois ou mais ponteiros são
-   descartados antes de chegarem ao WebView;
-3. **GestureDetector**: o duplo toque é consumido e não produz zoom.
+| Ramo | Aplicativo | Interface |
+|---|---|---|
+| `main` | Duck.ai (WebView, v1.3) | Página original do Duck.ai no WebView do sistema |
+| `native-compose` | Duck.ai Nativo (este) | Interface construída em Jetpack Compose, sem página web visível |
 
-## Ícone oficial e desempenho (v1.1 a v1.3)
+## Arquitetura
 
-- **Ícone oficial do DuckDuckGo**: o logotipo vetorial original (pato branco,
-  bico amarelo `#FDD209`, gravata verde `#65BC46` e olhos azuis `#2D4F8E`
-  sobre o disco laranja `#DE5833`) foi convertido em *adaptive icon*,
-  permanecendo nítido em qualquer densidade de tela;
-- **Sem tela de carregamento**: o indicador circular de progresso foi removido
-  por completo; o aplicativo abre diretamente no WebView e o fundo escuro do
-  tema (`#161616`) coincide com o tema do Duck.ai, eliminando qualquer
-  piscada ou rotacao de espera;
-- **Abertura rápida**: o modo de cache `LOAD_CACHE_ELSE_NETWORK` prioriza o
-  conteúdo já armazenado, tornando as aberturas seguintes praticamente
-  instantâneas;
-- **Estabilidade lateral absoluta (v1.3)**: a correção atua no mecanismo de
-  rolagem do próprio componente — `computeHorizontalScrollRange` é declarado
-  igual à área visível (`computeHorizontalScrollExtent`), tornando o
-  deslocamento horizontal fisicamente impossível, e o efeito elástico de
-  *overscroll* está desativado (`OVER_SCROLL_NEVER`). A página do Duck.ai
-  não é modificada em nenhum byte; a rolagem vertical permanece normal.
+1. **Interface nativa total**: Material 3 com o tema oficial do Duck.ai
+   (`#161616` de fundo, `#DE5833` de destaque), balões de conversa,
+   seletor de modelos e transmissão token a token em tempo real. Como a
+   interface é nativa, não existe movimento horizontal por construção —
+   o problema da tremedeira é estruturalmente impossível aqui;
+2. **Sessão invisível**: o Duck.ai protege o serviço com um desafio de
+   prova de trabalho (`X-Vqd-Hash-1`) resolvido por JavaScript de
+   navegador. O aplicativo carrega o duck.ai em uma WebView invisível de
+   1 pixel apenas durante a inicialização da sessão; um gancho
+   JavaScript observa os cabeçalhos das requisições internas e captura o
+   token gerado pela própria página. A WebView é destruída em seguida —
+   a interface continua 100% nativa;
+3. **Conversa nativa**: as mensagens trafegam por OkHttp diretamente ao
+   endpoint `/duckchat/v1/chat`, com respostas em streaming SSE
+   renderizadas token a token pela interface Compose;
+4. **Renovação automática**: ao receber o erro `ERR_CHALLENGE` (418),
+   o aplicativo renova a sessão invisível e repete a pergunta sem
+   intervenção do usuário.
 
-## Como obter o APK (sem instalar nada)
+## Modelos disponíveis
 
-1. Acesse a aba **Actions** deste repositório;
-2. Abra a execução mais recente do fluxo **Build APK**;
-3. Baixe o artefato **duckai-apk** na seção *Artifacts*;
+- GPT-5.4 Mini (`gpt-5.4-mini`)
+- GPT-5.4 Nano (`gpt-5.4-nano`)
+- Claude Haiku 4.5 (`claude-haiku-4-5`)
+- Mistral Small (`mistral-small-2603`)
+- GPT-OSS 120B (`tinfoil/gpt-oss-120b`)
+
+## Avisos importantes
+
+- O protocolo é **não oficial** e pode quebrar quando o Duck.ai mudar
+  sua proteção. O aplicativo do ramo `main` (WebView) permanece a
+  versão estável da dupla;
+- Funções avançadas da página (geração de imagens, busca web, upload de
+  arquivos, tema claro) não estão nesta versão;
+- Conversas não são sincronizadas com a conta do navegador: são
+  locais e voláteis.
+
+## Como obter o APK
+
+1. Acesse a aba **Actions** e selecione o fluxo **Build APK** da ramificação
+   `native-compose`;
+2. Abra a execução mais recente;
+3. Baixe o artefato **duckai-native-apk** na seção *Artifacts*;
 4. O pacote contém `app-debug.apk` (instalação direta) e
    `app-release-unsigned.apk` (para assinatura e publicação).
 
 ## Como compilar localmente (Android Studio)
 
-1. Clone o repositório e abra a pasta no Android Studio;
-2. Aguarde a sincronização do Gradle (o wrapper baixa o Gradle 8.11.1);
-3. *Build > Build App Bundle(s) / APK(s) > Build APK(s)*;
-4. O APK fica em `app/build/outputs/apk/`.
-
-## Como assinar o APK de release
-
-```bash
-gradle assembleRelease
-keytool -genkeypair -v -keystore duckai.keystore -alias duckai \
-    -keyalg RSA -keysize 2048 -validity 10000
-zipalign -p 4 app/build/outputs/apk/release/app-release-unsigned.apk \
-    app-release-aligned.apk
-apksigner sign --ks duckai.keystore --out duckai.apk \
-    app-release-aligned.apk
-```
+1. Faça o checkout da ramificação `native-compose`;
+2. Abra a pasta no Android Studio e aguarde a sincronização do Gradle;
+3. *Build > Build App Bundle(s) / APK(s) > Build APK(s)*.
 
 ## Notas de privacidade
 
-- Geolocalização, câmera e microfone são negados por padrão;
-- Apenas HTTPS; tráfego HTTP é automaticamente convertido ou bloqueado;
-- Links externos ao domínio `duck.ai` abrem no navegador, fora do app.
+- Nenhum dado é armazenado além da conversa em memória;
+- Apenas HTTPS; sem rastreadores; sem permissões além de INTERNET;
+- Ícone oficial do DuckDuckGo em vetor (adaptive icon).
 
 ## Estrutura
 
 ```
-app/src/main/java/com/duckai/nativeapp/MainActivity.kt
+app/src/main/java/com/duckai/nativecompose/MainActivity.kt     (interface Compose)
+app/src/main/java/com/duckai/nativecompose/DuckChatClient.kt   (protocolo de conversa)
+app/src/main/java/com/duckai/nativecompose/SessionHarvester.kt  (sessão invisível)
 app/src/main/AndroidManifest.xml
 app/src/main/res/...
 .github/workflows/build-apk.yml
