@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="duck_background">#161616</color>
+    <color name="duck_accent">#DE5833</color>
+    <color name="ic_launcher_background">#DE5833</color>
+</resources>

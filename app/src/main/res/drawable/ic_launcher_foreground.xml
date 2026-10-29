@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Cabeca do pato (circulo branco) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,38 a14,14 0 1,1 -0.01,0 z" />
+
+    <!-- Bico -->
+    <path
+        android:fillColor="#FFB694"
+        android:pathData="M65,50 l13,-6 l0,12 z" />
+
+    <!-- Olho -->
+    <path
+        android:fillColor="#161616"
+        android:pathData="M49,47 a2.4,2.4 0 1,1 -0.01,0 z" />
+</vector>
