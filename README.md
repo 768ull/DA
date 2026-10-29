@@ -4,6 +4,28 @@ Aplicativo que encapsula https://duck.ai/ utilizando o WebView nativo do
 próprio Android (motor instalado no sistema), com zoom completamente
 bloqueado e estabilidade lateral absoluta.
 
+## Menu de versões
+
+Todas as versões do aplicativo estão publicadas na página
+[Lançamentos](https://github.com/768ull/DA/releases) do repositório
+(o menu de versões). Cada versão traz o próprio APK de instalação
+direta, nomeado sem a palavra debug. A versão nativa em Jetpack Compose
+(ramificação `native-compose`) não é publicada no menu de versões; ela
+permanece disponível apenas como artefato de compilação na aba Actions.
+
+| Versão | Descrição | Download |
+| --- | --- | --- |
+| v1.0 | Versão inicial: WebView nativo com zoom totalmente bloqueado em três camadas | [duckai-v1.0.apk](https://github.com/768ull/DA/releases/download/v1.0/duckai-v1.0.apk) |
+| v1.1 | Ícone oficial do DuckDuckGo, sem tela de carregamento e abertura mais rápida | [duckai-v1.1.apk](https://github.com/768ull/DA/releases/download/v1.1/duckai-v1.1.apk) |
+| v1.2 | Primeira barreira de estabilidade lateral (overscroll desativado) | [duckai-v1.2.apk](https://github.com/768ull/DA/releases/download/v1.2/duckai-v1.2.apk) |
+| v1.3 | Trava física da rolagem horizontal; página do Duck.ai intocada | [duckai-v1.3.apk](https://github.com/768ull/DA/releases/download/v1.3/duckai-v1.3.apk) |
+| v1.4 | Interceptação de gestos horizontais no nível do componente | [duckai-v1.4.apk](https://github.com/768ull/DA/releases/download/v1.4/duckai-v1.4.apk) |
+| v1.5 | Trava absoluta de posição horizontal (versão atual) | [duckai-v1.5.apk](https://github.com/768ull/DA/releases/download/v1.5/duckai-v1.5.apk) |
+
+Observação: para instalar uma versão anterior à já instalada, é
+necessário desinstalar o aplicativo atual antes, pois o Android não
+permite retornar a um código de versão menor.
+
 ## Estabilidade lateral (v1.5) — cinco camadas independentes
 
 O bloqueio da tremedeira horizontal atua em cinco camadas distintas e
@@ -29,11 +51,8 @@ rolagem em WebView:
    rejeitam qualquer coordenada X diferente de zero). A posição
    horizontal permanece zero de forma permanente.
 
-A quinta camada foi acrescentada na v1.5 porque, mesmo com as quatro
-primeiras, o motor do Chromium ainda aplicava um deslocamento
-residual lento durante arrastes diagonais; a trava de posição o
-elimina por completo. A página do Duck.ai não é modificada em nenhum
-byte; a rolagem vertical permanece perfeitamente normal.
+A página do Duck.ai não é modificada em nenhum byte; a rolagem vertical
+permanece perfeitamente normal.
 
 ## Ícone oficial e desempenho (v1.1)
 
@@ -44,18 +63,20 @@ byte; a rolagem vertical permanece perfeitamente normal.
 - **Sem tela de carregamento**: o indicador circular de progresso foi removido
   por completo; o aplicativo abre diretamente no WebView e o fundo escuro do
   tema (`#161616`) coincide com o tema do Duck.ai, eliminando qualquer
-  piscada ou rotacao de espera;
+  piscada ou rotação de espera;
 - **Abertura rápida**: o modo de cache `LOAD_CACHE_ELSE_NETWORK` prioriza o
   conteúdo já armazenado, tornando as aberturas seguintes praticamente
   instantâneas.
 
-## Como obter o APK (sem instalar nada)
+## Como obter o APK
 
-1. Acesse a aba **Actions** deste repositório;
-2. Abra a execução mais recente do fluxo **Build APK** da ramificação `main`;
-3. Baixe o artefato **duckai-apk** na seção *Artifacts*;
-4. O pacote contém `app-debug.apk` (instalação direta) e
-   `app-release-unsigned.apk` (para assinatura e publicação).
+1. Acesse a página [Lançamentos](https://github.com/768ull/DA/releases)
+   (menu de versões) — não é necessário estar autenticado no GitHub;
+2. Abra a versão desejada e baixe o arquivo `duckai-vX.Y.apk`;
+3. Instale diretamente no aparelho.
+
+Alternativa: na aba **Actions**, abra a execução mais recente do fluxo
+**Build APK** da ramificação `main` e baixe o artefato **duckai-apk**.
 
 ## Como compilar localmente (Android Studio)
 
@@ -64,7 +85,10 @@ byte; a rolagem vertical permanece perfeitamente normal.
 3. *Build > Build App Bundle(s) / APK(s) > Build APK(s)*;
 4. O APK fica em `app/build/outputs/apk/`.
 
-## Como assinar o APK de release
+## Como assinar o APK de release (compilação local)
+
+O menu de versões distribui o APK de instalação direta. Para gerar uma
+versão de produção assinada, compile localmente:
 
 ```bash
 gradle assembleRelease
