@@ -1,5 +1,8 @@
 package com.duckai.nativecompose
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,6 +14,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -20,7 +25,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Refresh
@@ -34,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
@@ -68,12 +76,49 @@ val MODELS = listOf(
     DuckModel("tinfoil/gpt-oss-120b", "GPT-OSS 120B")
 )
 
+/**
+ * Registro de falhas: captura o motivo exato de qualquer fechamento
+ * inesperado e o preserva internamente. Na proxima abertura, o
+ * aplicativo exibe o diagnostico completo, com opcao de copia-lo.
+ */
+object CrashLog {
+    private const val PREFS = "duck_crash"
+    private const val KEY = "last_crash"
+
+    fun install(context: Context) {
+        val appContext = context.applicationContext
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                appContext
+                    .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY, throwable.stackTraceToString())
+                    .commit()
+            } catch (e: Exception) {
+                // Registro e melhor-esforco: nunca deve agravar a falha.
+            }
+            previous?.uncaughtException(thread, throwable)
+        }
+    }
+
+    fun read(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY, null)
+
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().remove(KEY).commit()
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLog.install(this)
         setContent {
             DuckTheme {
-                ChatScreen()
+                ChatScreen(this@MainActivity)
             }
         }
     }
@@ -99,8 +144,7 @@ fun DuckTheme(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen() {
-    val activity = LocalContext.current as ComponentActivity
+fun ChatScreen(activity: ComponentActivity) {
     val scope = rememberCoroutineScope()
     val harvester = remember { SessionHarvester(activity) }
     val client = remember { DuckChatClient() }
@@ -113,6 +157,7 @@ fun ChatScreen() {
     var busy by remember { mutableStateOf(false) }
     var model by remember { mutableStateOf(MODELS.first()) }
     var menuOpen by remember { mutableStateOf(false) }
+    var crashReport by remember { mutableStateOf(CrashLog.read(activity)) }
 
     fun startSession() {
         sessionReady = false
@@ -237,6 +282,13 @@ fun ChatScreen() {
             )
         )
 
+        crashReport?.let { report ->
+            CrashBanner(report) {
+                CrashLog.clear(activity)
+                crashReport = null
+            }
+        }
+
         if (!sessionReady) {
             Row(
                 modifier = Modifier
@@ -341,6 +393,50 @@ fun MessageBubble(msg: ChatMessage) {
                 fontSize = 15.sp,
                 lineHeight = 21.sp
             )
+        }
+    }
+}
+
+@Composable
+fun CrashBanner(text: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    Surface(
+        color = Color(0xFF7A1F14),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                "O aplicativo fechou na última execução. Diagnóstico:",
+                color = Color.White,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text,
+                color = Color(0xFFFFD9D0),
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                modifier = Modifier
+                    .heightIn(max = 160.dp)
+                    .verticalScroll(rememberScrollState())
+            )
+            Spacer(Modifier.height(8.dp))
+            Row {
+                TextButton(onClick = {
+                    val clipboard =
+                        context.getSystemService(Context.CLIPBOARD_SERVICE)
+                            as ClipboardManager
+                    clipboard.setPrimaryClip(
+                        ClipData.newPlainText("diagnóstico", text)
+                    )
+                }) { Text("Copiar log", color = Color.White) }
+                TextButton(onClick = onDismiss) {
+                    Text("Fechar", color = Color.White)
+                }
+            }
         }
     }
 }

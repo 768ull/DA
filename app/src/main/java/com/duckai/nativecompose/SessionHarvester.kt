@@ -18,12 +18,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * O servico protege a conversa com um desafio de prova de trabalho
  * (X-Vqd-Hash-1) cuja resolucao exige JavaScript de navegador. Em vez
- * de reengenheirar o desafio (que muda constantemente), este colhedor
- * carrega o duck.ai em uma WebView invisivel de 1 pixel: a propria
- * pagina resolve o desafio e um gancho JavaScript observa os cabecalhos
- * das requisicoes internas, capturando o token gerado. A WebView e
- * destruida imediatamente apos a captura; a interface continua 100%
- * nativa, apenas o transporte HTTP e nativo (OkHttp).
+ * de reengenheirar o desafio, este colhedor carrega o duck.ai em uma
+ * WebView invisivel de 1 pixel: a propria pagina resolve o desafio e
+ * um gancho JavaScript observa os cabecalhos das requisicoes internas,
+ * capturando o token gerado. A WebView e destruida em seguida.
  */
 class SessionHarvester(private val activity: ComponentActivity) {
 
@@ -36,34 +34,52 @@ class SessionHarvester(private val activity: ComponentActivity) {
         val deferred = CompletableDeferred<String>()
 
         withContext(Dispatchers.Main) {
-            val wv = WebView(activity)
-            wv.alpha = 0f
-            wv.settings.javaScriptEnabled = true
-            wv.settings.domStorageEnabled = true
-            wv.settings.databaseEnabled = true
+            val wv = try {
+                WebView(activity).also {
+                    it.alpha = 0f
+                    it.settings.javaScriptEnabled = true
+                    it.settings.domStorageEnabled = true
+                    it.settings.databaseEnabled = true
+                    it.addJavascriptInterface(object {
+                        @JavascriptInterface
+                        fun onToken(value: String?) {
+                            if (!value.isNullOrEmpty()) {
+                                runCatching { deferred.complete(value) }
+                            }
+                        }
+                    }, "NativeBridge")
+                    it.webViewClient = object : WebViewClient() {
+                        override fun onPageStarted(
+                            view: WebView,
+                            url: String,
+                            favicon: Bitmap?
+                        ) {
+                            view.evaluateJavascript(HOOK_JS, null)
+                        }
 
-            wv.addJavascriptInterface(object {
-                @JavascriptInterface
-                fun onToken(value: String?) {
-                    if (!value.isNullOrEmpty()) {
-                        runCatching { deferred.complete(value) }
+                        override fun onPageFinished(view: WebView, url: String) {
+                            view.evaluateJavascript(HOOK_JS, null)
+                        }
                     }
                 }
-            }, "NativeBridge")
-
-            wv.webViewClient = object : WebViewClient() {
-                override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
-                    view.evaluateJavascript(HOOK_JS, null)
-                }
-
-                override fun onPageFinished(view: WebView, url: String) {
-                    view.evaluateJavascript(HOOK_JS, null)
-                }
+            } catch (e: Exception) {
+                throw Exception(
+                    "Falha ao preparar a sessão: " +
+                        (e.message ?: e.javaClass.simpleName)
+                )
             }
 
-            activity.addContentView(wv, ViewGroup.LayoutParams(1, 1))
-            wv.loadUrl("https://duck.ai/")
-            webView = wv
+            try {
+                activity.addContentView(wv, ViewGroup.LayoutParams(1, 1))
+                wv.loadUrl("https://duck.ai/")
+                webView = wv
+            } catch (e: Exception) {
+                runCatching { wv.destroy() }
+                throw Exception(
+                    "Falha ao anexar a sessão: " +
+                        (e.message ?: e.javaClass.simpleName)
+                )
+            }
         }
 
         val token = withTimeoutOrNull(45_000L) { deferred.await() }
@@ -89,11 +105,6 @@ class SessionHarvester(private val activity: ComponentActivity) {
     }
 
     companion object {
-        /**
-         * Gancho JavaScript: observa fetch e XMLHttpRequest da pagina,
-         * reportando qualquer token X-Vqd enviado ao dominio duckchat,
-         * alem de varrer o armazenamento local por tokens orfaos.
-         */
         private const val HOOK_JS = """
         (function () {
             if (window.__duckHookInstalled) return;
