@@ -1,0 +1,63 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  build:
+    name: Assemble debug APK
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android platform 34 and build-tools
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.7'
+
+      - name: Build debug APK
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: duckassist-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Report build failure as issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHORT_SHA=${GITHUB_SHA::7}
+          {
+            echo "A execucao do workflow de build falhou para o commit $SHORT_SHA."
+            echo ""
+            echo "Ultimas linhas do log (tail de build.log):"
+            echo ""
+            echo '```'
+            tail -c 12000 build.log || echo "(log nao disponivel)"
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "Falha no build do APK ($SHORT_SHA)" --body-file issue-body.md
