@@ -2,15 +2,31 @@
 
 Aplicativo que encapsula https://duck.ai/ utilizando o WebView nativo do
 próprio Android (motor instalado no sistema), com zoom completamente
-bloqueado por meio de três camadas:
+bloqueado e estabilidade lateral absoluta.
 
-1. **WebSettings**: `setSupportZoom(false)`, `builtInZoomControls(false)` e
-   `displayZoomControls(false)` — desativa pinch, duplo toque e controles;
-2. **Interceptação de multitoque**: eventos com dois ou mais ponteiros são
-   descartados antes de chegarem ao WebView;
-3. **GestureDetector**: o duplo toque é consumido e não produz zoom.
+## Estabilidade lateral (v1.4) — quatro camadas independentes
 
-## Ícone oficial e desempenho (v1.1 a v1.3)
+O bloqueio da tremedeira horizontal atua em quatro camadas distintas e
+complementares, conforme as técnicas consagradas de controle de
+rolagem em WebView:
+
+1. **Overscroll desativado** (`OVER_SCROLL_NEVER`) e barras de
+   rolagem ocultas — elimina o efeito elástico de esticamento do
+   Android 12+;
+2. **Trava física** — `computeHorizontalScrollRange` é declarado
+   igual a `computeHorizontalScrollExtent`: a área rolável horizontal
+   é exatamente a área visível, portanto não existe espaço lateral
+   para rolar;
+3. **Interceptação de gesto** — arrastes dominados pela horizontal são
+   consumidos no nível do componente e nunca chegam ao motor de
+   rolagem; um arraste que se inicie vertical continua rolando
+   normalmente;
+4. **Zoom impossível** — multitoque e duplo toque são consumidos.
+
+A página do Duck.ai não é modificada em nenhum byte; a rolagem
+vertical permanece perfeitamente normal.
+
+## Ícone oficial e desempenho (v1.1)
 
 - **Ícone oficial do DuckDuckGo**: o logotipo vetorial original (pato branco,
   bico amarelo `#FDD209`, gravata verde `#65BC46` e olhos azuis `#2D4F8E`
@@ -22,18 +38,12 @@ bloqueado por meio de três camadas:
   piscada ou rotacao de espera;
 - **Abertura rápida**: o modo de cache `LOAD_CACHE_ELSE_NETWORK` prioriza o
   conteúdo já armazenado, tornando as aberturas seguintes praticamente
-  instantâneas;
-- **Estabilidade lateral absoluta (v1.3)**: a correção atua no mecanismo de
-  rolagem do próprio componente — `computeHorizontalScrollRange` é declarado
-  igual à área visível (`computeHorizontalScrollExtent`), tornando o
-  deslocamento horizontal fisicamente impossível, e o efeito elástico de
-  *overscroll* está desativado (`OVER_SCROLL_NEVER`). A página do Duck.ai
-  não é modificada em nenhum byte; a rolagem vertical permanece normal.
+  instantâneas.
 
 ## Como obter o APK (sem instalar nada)
 
 1. Acesse a aba **Actions** deste repositório;
-2. Abra a execução mais recente do fluxo **Build APK**;
+2. Abra a execução mais recente do fluxo **Build APK** da ramificação `main`;
 3. Baixe o artefato **duckai-apk** na seção *Artifacts*;
 4. O pacote contém `app-debug.apk` (instalação direta) e
    `app-release-unsigned.apk` (para assinatura e publicação).

@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -26,6 +27,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
@@ -128,43 +130,81 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** WebView totalmente rigido: sem zoom, sem overscroll e sem
-     *  qualquer deslocamento horizontal fisico. A pagina do Duck.ai
-     *  nao e modificada em nenhum byte. */
+    /**
+     * WebView totalmente rigido. Quatro camadas independentes e
+     * complementares, conforme as tecnicas consagradas de bloqueio de
+     * rolagem lateral em WebView:
+     *
+     *  1. OVER_SCROLL_NEVER + barras ocultas: elimina o efeito
+     *     elastico de esticamento (overscroll stretch) do Android;
+     *  2. Trava fisica: computeHorizontalScrollRange declarado igual
+     *     a area visivel - nao existe espaco lateral para rolar;
+     *  3. Interceptacao de gesto: arrastes dominados pela horizontal
+     *     sao consumidos antes de chegar ao motor de rolagem;
+     *  4. Multitoque e duplo toque consumidos - zoom impossivel.
+     *
+     * A rolagem vertical permanece perfeitamente intacta e a pagina
+     * do Duck.ai nao e modificada em nenhum byte.
+     */
     private class NoZoomWebView(context: Context) : WebView(context) {
 
+        private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+        private var lastX = 0f
+        private var lastY = 0f
+        private var lateralDrag = false
+
         init {
-            /* Efeito elastico de overscroll (o "esticamento" suave que
-             * acompanha o dedo) totalmente desativado, assim como as
-             * barras de rolagem. */
+            /* Camada 1: sem efeito elastico, sem barras de rolagem. */
             overScrollMode = View.OVER_SCROLL_NEVER
             isHorizontalScrollBarEnabled = false
             isVerticalScrollBarEnabled = false
+            setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY)
         }
 
-        /* ---- TRAVA FISICA DA ROLAGEM HORIZONTAL ----
-         * Declarar que a area rolavel horizontal e exatamente igual a
-         * area visivel significa que NAO EXISTE espaco para rolar
-         * para os lados, independentemente do conteudo da pagina.
-         * E a correcao mais profunda e mais robusta possivel: atua no
-         * mecanismo de rolagem do proprio componente, sem tocar na
-         * pagina e sem interferir na rolagem vertical normal. */
+        /* Camada 2: trava fisica da rolagem horizontal. A area rolavel
+         * e declarada exatamente igual a area visivel. */
         override fun computeHorizontalScrollRange(): Int =
             computeHorizontalScrollExtent()
 
         private val doubleTapBlocker = GestureDetector(
             context,
             object : GestureDetector.SimpleOnGestureListener() {
-                /** Consome o duplo toque para impedir zoom por toque duplo. */
+                /** Camada 4: consome o duplo toque (zoom por toque duplo). */
                 override fun onDoubleTap(event: MotionEvent): Boolean = true
             }
         )
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
             doubleTapBlocker.onTouchEvent(event)
-            /* Pinch zoom: qualquer evento com dois ou mais ponteiros e
-             * consumido e descartado antes de chegar ao WebView. */
+
+            /* Camada 4: qualquer evento com dois ou mais ponteiros
+             * (pinch zoom) e descartado antes de chegar ao WebView. */
             if (event.pointerCount > 1) return true
+
+            /* Camada 3: interceptacao de arraste lateral. */
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    lastX = event.x
+                    lastY = event.y
+                    lateralDrag = false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = abs(event.x - lastX)
+                    val dy = abs(event.y - lastY)
+                    lastX = event.x
+                    lastY = event.y
+                    if (lateralDrag || (dx > touchSlop && dx > dy)) {
+                        /* Movimento dominado pela horizontal: consumido.
+                         * Nao ha deslocamento, nao ha esticamento, nao
+                         * ha tremor. Um arraste que se inicie vertical
+                         * continua rolando normalmente. */
+                        lateralDrag = true
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> lateralDrag = false
+            }
             return super.onTouchEvent(event)
         }
     }
