@@ -131,7 +131,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * WebView totalmente rigido. Quatro camadas independentes e
+     * WebView totalmente rigido. Cinco camadas independentes e
      * complementares, conforme as tecnicas consagradas de bloqueio de
      * rolagem lateral em WebView:
      *
@@ -141,7 +141,12 @@ class MainActivity : AppCompatActivity() {
      *     a area visivel - nao existe espaco lateral para rolar;
      *  3. Interceptacao de gesto: arrastes dominados pela horizontal
      *     sao consumidos antes de chegar ao motor de rolagem;
-     *  4. Multitoque e duplo toque consumidos - zoom impossivel.
+     *  4. Multitoche e duplo toque consumidos - zoom impossivel;
+     *  5. Trava absoluta de posicao: qualquer deslocamento horizontal
+     *     aplicado ao componente e forcado de volta a zero dentro do
+     *     mesmo quadro, venha ele do dedo, do fling ou do proprio
+     *     motor do Chromium. A posicao horizontal permanece 0 de
+     *     forma permanente.
      *
      * A rolagem vertical permanece perfeitamente intacta e a pagina
      * do Duck.ai nao e modificada em nenhum byte.
@@ -152,6 +157,7 @@ class MainActivity : AppCompatActivity() {
         private var lastX = 0f
         private var lastY = 0f
         private var lateralDrag = false
+        private var correctingPosition = false
 
         init {
             /* Camada 1: sem efeito elastico, sem barras de rolagem. */
@@ -165,6 +171,40 @@ class MainActivity : AppCompatActivity() {
          * e declarada exatamente igual a area visivel. */
         override fun computeHorizontalScrollRange(): Int =
             computeHorizontalScrollExtent()
+
+        /* Camada 5: trava absoluta de posicao horizontal. Toda
+         * solicitacao de rolagem - do dedo, do fling ou do proprio
+         * motor do Chromium - e forcada a zero antes de ser aplicada.
+         * Nenhuma forca do sistema consegue mover o componente
+         * lateralmente. */
+        override fun scrollTo(x: Int, y: Int) {
+            super.scrollTo(0, y)
+        }
+
+        override fun onOverScrolled(
+            scrollX: Int,
+            scrollY: Int,
+            clampedX: Boolean,
+            clampedY: Boolean
+        ) {
+            super.onOverScrolled(0, scrollY, clampedX, clampedY)
+        }
+
+        override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+            if (l != 0 && !correctingPosition) {
+                /* Correcao de emergencia: se algum deslocamento
+                 * horizontal escapar das camadas anteriores, ele e
+                 * revertido dentro do proprio quadro. */
+                correctingPosition = true
+                try {
+                    super.scrollTo(0, t)
+                } finally {
+                    correctingPosition = false
+                }
+                return
+            }
+            super.onScrollChanged(l, t, oldl, oldt)
+        }
 
         private val doubleTapBlocker = GestureDetector(
             context,

@@ -4,9 +4,9 @@ Aplicativo que encapsula https://duck.ai/ utilizando o WebView nativo do
 próprio Android (motor instalado no sistema), com zoom completamente
 bloqueado e estabilidade lateral absoluta.
 
-## Estabilidade lateral (v1.4) — quatro camadas independentes
+## Estabilidade lateral (v1.5) — cinco camadas independentes
 
-O bloqueio da tremedeira horizontal atua em quatro camadas distintas e
+O bloqueio da tremedeira horizontal atua em cinco camadas distintas e
 complementares, conforme as técnicas consagradas de controle de
 rolagem em WebView:
 
@@ -21,10 +21,19 @@ rolagem em WebView:
    consumidos no nível do componente e nunca chegam ao motor de
    rolagem; um arraste que se inicie vertical continua rolando
    normalmente;
-4. **Zoom impossível** — multitoque e duplo toque são consumidos.
+4. **Zoom impossível** — multitoque e duplo toque são consumidos;
+5. **Trava absoluta de posição** — qualquer deslocamento horizontal
+   aplicado ao componente é forçado de volta a zero dentro do mesmo
+   quadro, venha ele do dedo, do fling ou do próprio motor do
+   Chromium (`scrollTo`, `onOverScrolled` e `onScrollChanged`
+   rejeitam qualquer coordenada X diferente de zero). A posição
+   horizontal permanece zero de forma permanente.
 
-A página do Duck.ai não é modificada em nenhum byte; a rolagem
-vertical permanece perfeitamente normal.
+A quinta camada foi acrescentada na v1.5 porque, mesmo com as quatro
+primeiras, o motor do Chromium ainda aplicava um deslocamento
+residual lento durante arrastes diagonais; a trava de posição o
+elimina por completo. A página do Duck.ai não é modificada em nenhum
+byte; a rolagem vertical permanece perfeitamente normal.
 
 ## Ícone oficial e desempenho (v1.1)
 
